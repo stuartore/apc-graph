@@ -28,7 +28,7 @@ digraph regexp {
 	node[shape=box,style=filled,color=lightblue,nodesep=4.0];
 	graph [ overlap=false ];
 
-	## map body
+	// Generated map body
 	${graphviz_lines_add}
 }
 EOF
@@ -38,12 +38,15 @@ handle_routes(){
 	# audio_policy_configuration.xml
 	adp_source=$1
 	graphviz_name=$2
+	
+	lines_tmp=lines.txt
+	
 	if [[ ! $1 ]];then echo "[ - ] No input audio_policy_configuration.xml" && exit;fi
 	if [[ $graphviz_name == "" ]];then graphviz_name='audio_graphviz';fi
 
 	# Gnerate lines.txt
-	cat>lines.txt<<LINESEOF
-#Generated lines
+	cat>$lines_tmp<<LINESEOF
+// body follows
 LINESEOF
 
 	route_list_arg0="$(xmllint --xpath '//audioPolicyConfiguration/modules/module/routes/route[@type="mix"]/@sink' $adp_source | sed 's/"//g' | sed 's/ sink=//g' | sed ':a;N;$!ba;s/\n/!/g')"
@@ -57,20 +60,21 @@ LINESEOF
 
 		#echo "[$route]: ${route_sources_str}"
 
+		sed -i '$a\ \/\/ '"$route"'' $lines_tmp
 		str_to_arr "${route_sources_str}" ','
 		for route_source in "${str_to_arr_result[@]}"
 		do
 			#echo "$route_source -> $route"
 			graphviz_new_line="\"$route_source\" -> \"$route\";"
-			sed -i '$a '"$graphviz_new_line"'' lines.txt
-			
+			sed -i '$a '"$graphviz_new_line"'' $lines_tmp
 			#echo "$route <- $route_source"
 		done
+		sed -i '$a\ \n' $lines_tmp
 		#echo '-----------------'
 	done
-	graphviz_lines_add="$(cat lines.txt | uniq)"
+	graphviz_lines_add="$(cat $lines_tmp | uniq)"
 	write_txt
-	rm -f lines.txt
+	rm -f $lines_tmp
 	dot -Tpng ${graphviz_name}.txt -o ${graphviz_name}.png
 	echo "[ + ] Generated at ${graphviz_name}.png "
 }
