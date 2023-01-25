@@ -14,8 +14,6 @@ if [[ ! $(whereis graphviz) ]];then
 	fi
 fi
 
-# dot -Tpng test.txt -o test.png
-
 str_to_arr(){
 	OLD_IFS="$IFS"
 	IFS="$2"
@@ -24,7 +22,7 @@ str_to_arr(){
 }
 
 write_txt(){
-	cat>test.txt<<EOF
+	cat>${graphviz_name}.txt<<EOF
 digraph regexp {
 	rankdir=RL;
 	node[shape=box,style=filled,color=lightblue,nodesep=4.0];
@@ -40,7 +38,7 @@ handle_routes(){
 	# audio_policy_configuration.xml
 	adp_source=$1
 	graphviz_name=$2
-	if [[ ! $1 ]];then echo "[ x ] No input audio_policy_configuration.xml" && exit;fi
+	if [[ ! $1 ]];then echo "[ - ] No input audio_policy_configuration.xml" && exit;fi
 	if [[ $graphviz_name == "" ]];then graphviz_name='audio_graphviz';fi
 
 	# Gnerate lines.txt
@@ -57,23 +55,24 @@ LINESEOF
 		cmd_get_route_source="xmllint --xpath 'string(//audioPolicyConfiguration/modules/module/routes/route[@sink=\"$route\"]/@sources)' $adp_source"
 		route_sources_str="$(eval $cmd_get_route_source)"
 
-		echo "[$route]: ${route_sources_str}"
+		#echo "[$route]: ${route_sources_str}"
 
 		str_to_arr "${route_sources_str}" ','
 		for route_source in "${str_to_arr_result[@]}"
 		do
-			echo "$route_source -> $route"
+			#echo "$route_source -> $route"
 			graphviz_new_line="\"$route_source\" -> \"$route\";"
 			sed -i '$a '"$graphviz_new_line"'' lines.txt
 			
 			#echo "$route <- $route_source"
 		done
-		echo '-----------------'
+		#echo '-----------------'
 	done
 	graphviz_lines_add="$(cat lines.txt | uniq)"
 	write_txt
 	rm -f lines.txt
-	dot -Tpng test.txt -o ${graphviz_name}.png
+	dot -Tpng ${graphviz_name}.txt -o ${graphviz_name}.png
+	echo "[ + ] Generated at ${graphviz_name}.png "
 }
 
 handle_routes $1 $2
