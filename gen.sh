@@ -23,21 +23,38 @@ str_to_arr(){
 	IFS="$OLD_IFS"
 }
 
-recover_txt(){
+write_txt(){
 	cat>test.txt<<EOF
-digraph regexp { 
-	#Generate
+digraph regexp {
+	rankdir=RL;
+	node[shape=box,style=filled,color=lightblue,nodesep=4.0];
+	graph [ overlap=false ];
+
+	## map body
+	${graphviz_lines_add}
 }
 EOF
 }
+
 handle_routes(){
-	route_list_arg0="$(xmllint --xpath '//audioPolicyConfiguration/modules/module/routes/route[@type="mix"]/@sink' audio_policy_configuration.xml | sed 's/"//g' | sed 's/ sink=//g' | sed ':a;N;$!ba;s/\n/!/g')"
+	# audio_policy_configuration.xml
+	adp_source=$1
+	graphviz_name=$2
+	if [[ ! $1 ]];then echo "[ x ] No input audio_policy_configuration.xml" && exit;fi
+	if [[ $graphviz_name == "" ]];then graphviz_name='audio_graphviz';fi
+
+	# Gnerate lines.txt
+	cat>lines.txt<<LINESEOF
+#Generated lines
+LINESEOF
+
+	route_list_arg0="$(xmllint --xpath '//audioPolicyConfiguration/modules/module/routes/route[@type="mix"]/@sink' $adp_source | sed 's/"//g' | sed 's/ sink=//g' | sed ':a;N;$!ba;s/\n/!/g')"
 
 	str_to_arr "${route_list_arg0}" '!'
 
 	for route in "${str_to_arr_result[@]}"
 	do
-		cmd_get_route_source="xmllint --xpath 'string(//audioPolicyConfiguration/modules/module/routes/route[@sink=\"$route\"]/@sources)' audio_policy_configuration.xml"
+		cmd_get_route_source="xmllint --xpath 'string(//audioPolicyConfiguration/modules/module/routes/route[@sink=\"$route\"]/@sources)' $adp_source"
 		route_sources_str="$(eval $cmd_get_route_source)"
 
 		echo "[$route]: ${route_sources_str}"
@@ -47,13 +64,16 @@ handle_routes(){
 		do
 			echo "$route_source -> $route"
 			graphviz_new_line="\"$route_source\" -> \"$route\";"
-			sed -i '/#Generate/a '"$graphviz_new_line"'' test.txt
+			sed -i '$a '"$graphviz_new_line"'' lines.txt
+			
 			#echo "$route <- $route_source"
 		done
 		echo '-----------------'
 	done
-	dot -Tpng test.txt -o test.png
+	graphviz_lines_add="$(cat lines.txt | uniq)"
+	write_txt
+	rm -f lines.txt
+	dot -Tpng test.txt -o ${graphviz_name}.png
 }
 
-recover_txt
-handle_routes
+handle_routes $1 $2
