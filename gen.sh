@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ ! $(whereis graphviz) ]];then
+if [[ ! $(command -v dot) ]];then
 	lsb_os=$(grep -o '^ID=.*$' /etc/os-release | cut -d'=' -f2)
 
 	if [[ ${lsb_os} =~ "ubuntu" ]];then
